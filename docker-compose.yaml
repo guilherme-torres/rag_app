@@ -3,11 +3,12 @@ services:
     build: .
     container_name: rag_app
     networks:
-      - ollama_ollama-network
+      - ollama-network
     env_file: .env
     ports:
       - "8080:8080"
 
 networks:
-  ollama_ollama-network:
+  ollama-network:
+    name: ollama_ollama-network
     external: true

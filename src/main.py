@@ -6,8 +6,11 @@ from langchain_ollama import ChatOllama
 from fastapi import FastAPI
 from .config.ollama_config import OllamaConfig
 from .rag import RagPipeline
+from .utils.download_ollama_models import DownloadOllamaModels
 
 app = FastAPI()
+
+DownloadOllamaModels(OllamaConfig()).execute()
 
 embeddings = OllamaEmbeddings(
     model=OllamaConfig().EMBEDDING_MODEL,
