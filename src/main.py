@@ -3,8 +3,11 @@ from langchain_ollama import OllamaEmbeddings
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores import FAISS
 from langchain_ollama import ChatOllama
-from ollama_config import OllamaConfig
-from rag import RagPipeline
+from fastapi import FastAPI
+from .config.ollama_config import OllamaConfig
+from .rag import RagPipeline
+
+app = FastAPI()
 
 embeddings = OllamaEmbeddings(
     model=OllamaConfig().EMBEDDING_MODEL,
@@ -32,9 +35,9 @@ rag_pipeline = RagPipeline(
     llm=llm
 )
 
-if __name__ == '__main__':
+@app.get("/")
+def generate(query: str):
     rag_pipeline.ingest()
-    query = 'a decisão foi a favor de qual parte?'
     documents = rag_pipeline.retrieve(query)
     response = rag_pipeline.generate(query, documents)
-    print(response)
+    return {"response": response}

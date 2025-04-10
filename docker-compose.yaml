@@ -2,11 +2,11 @@ services:
   app:
     build: .
     container_name: rag_app
-    volumes:
-      - .:/app
     networks:
       - ollama_ollama-network
     env_file: .env
+    ports:
+      - "8080:8080"
 
 networks:
   ollama_ollama-network:

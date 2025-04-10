@@ -9,10 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     libpq-dev
 
-COPY ./requirements.txt .
+COPY ./requirements.txt /app/requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY ./src /app/src
 
-CMD [ "python", "src/main.py" ]
+CMD ["fastapi", "run", "src/main.py", "--port", "8080"]

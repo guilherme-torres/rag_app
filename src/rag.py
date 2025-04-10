@@ -23,7 +23,6 @@ class RagPipeline:
             chunk_overlap=250
         )
         chunks = text_splitter.create_documents([text_content])
-        # print(chunks, len(chunks))
         uuids = [str(uuid4()) for _ in range(len(chunks))]
         return self.vector_store.add_documents(documents=chunks, ids=uuids)
 
@@ -48,6 +47,5 @@ class RagPipeline:
             "documents": '\n'.join([f' - {document.page_content}' for document in documents]),
             "query": query
         })
-        # print(prompt)
         llm_response =  self.llm.invoke(prompt)
         return llm_response.content
