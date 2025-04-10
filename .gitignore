@@ -1,0 +1,5 @@
+venv
+.env
+ollama/ollama
+__pycache__
+src/document.json
