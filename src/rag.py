@@ -5,6 +5,7 @@ from langchain_core.vectorstores import VectorStore
 from langchain_core.language_models import BaseChatModel
 from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
+from langchain_community.document_transformers import BeautifulSoupTransformer
 
 class RagPipeline:
 
@@ -17,18 +18,24 @@ class RagPipeline:
         data = None
         with open('src/document.json') as document_file:
             data = json.load(document_file)
-        text_content = data['attachment']['content']
+        content = data['attachment']['content']
+        bs4_transformer = BeautifulSoupTransformer()
+        text_content = bs4_transformer.extract_tags(
+            html_content=content,
+            tags=['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'a', 'div', 'span', 'strong']
+        )
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=250
         )
         chunks = text_splitter.create_documents([text_content])
+        # print(chunks, len(chunks))
         uuids = [str(uuid4()) for _ in range(len(chunks))]
         return self.vector_store.add_documents(documents=chunks, ids=uuids)
 
 
     def retrieve(self, query: str) -> list[Document]:
-        return self.vector_store.similarity_search(query=query, k=5)
+        return self.vector_store.similarity_search(query=query, k=10)
 
 
     def generate(self, query: str, documents: list[Document]):
