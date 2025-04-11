@@ -6,11 +6,13 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
 from langchain_community.document_transformers import BeautifulSoupTransformer
+from langchain_experimental.graph_transformers import LLMGraphTransformer
 
 class RagPipeline:
 
-    def __init__(self, vector_store: VectorStore, llm: BaseChatModel):
+    def __init__(self, vector_store: VectorStore, graph_store, llm: BaseChatModel):
         self.vector_store = vector_store
+        self.graph_store = graph_store
         self.llm = llm
     
 
@@ -29,9 +31,13 @@ class RagPipeline:
             chunk_overlap=250
         )
         chunks = text_splitter.create_documents([text_content])
-        # print(chunks, len(chunks))
-        uuids = [str(uuid4()) for _ in range(len(chunks))]
-        return self.vector_store.add_documents(documents=chunks, ids=uuids)
+        llm_transformer = LLMGraphTransformer(llm=self.llm)
+        print('gerando grafo de conhecimento ...')
+        graph_documents = llm_transformer.convert_to_graph_documents(chunks)
+        print(f"Nodes:{graph_documents[0].nodes}")
+        print(f"Relationships:{graph_documents[0].relationships}")
+        # uuids = [str(uuid4()) for _ in range(len(chunks))]
+        # return self.vector_store.add_documents(documents=chunks, ids=uuids)
 
 
     def retrieve(self, query: str) -> list[Document]:

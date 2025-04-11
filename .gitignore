@@ -1,5 +1,6 @@
 venv
 .env
 ollama/ollama
+neo4j/neo4j
 __pycache__
 src/document.json

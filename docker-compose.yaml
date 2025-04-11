@@ -4,11 +4,15 @@ services:
     container_name: rag_app
     networks:
       - ollama-network
+      - neo4j-network
     env_file: .env
     ports:
       - "8080:8080"
 
 networks:
+  neo4j-network:
+    name: neo4j_neo4j-network
+    external: true
   ollama-network:
     name: ollama_ollama-network
     external: true
