@@ -14,28 +14,24 @@ class RagPipeline:
         self.llm = llm
     
 
-    def ingest(self) -> list[str]:
-        data = None
-        with open('src/document.json') as document_file:
-            data = json.load(document_file)
-        content = data['attachment']['content']
+    def ingest(self, data) -> list[str]:
+        content = data.attachment['content']
         bs4_transformer = BeautifulSoupTransformer()
         text_content = bs4_transformer.extract_tags(
             html_content=content,
             tags=['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'a', 'div', 'span', 'strong']
         )
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=250
-        )
-        chunks = text_splitter.create_documents([text_content])
-        # print(chunks, len(chunks))
-        uuids = [str(uuid4()) for _ in range(len(chunks))]
-        return self.vector_store.add_documents(documents=chunks, ids=uuids)
+        documents = [Document(page_content=text_content)]
+        uuids = [str(uuid4()) for _ in range(len(documents))]
+        return self.vector_store.add_documents(documents=documents, ids=uuids)
+
+    
+    def clear_storage(self, ids: list[str]) -> None:
+        self.vector_store.delete(ids=ids)
 
 
     def retrieve(self, query: str) -> list[Document]:
-        return self.vector_store.similarity_search(query=query, k=10)
+        return self.vector_store.similarity_search(query=query, k=1)
 
 
     def generate(self, query: str, documents: list[Document]):
@@ -54,5 +50,5 @@ class RagPipeline:
             "documents": '\n'.join([f' - {document.page_content}' for document in documents]),
             "query": query
         })
-        llm_response =  self.llm.invoke(prompt)
+        llm_response = self.llm.invoke(prompt)
         return llm_response.content

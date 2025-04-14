@@ -1,9 +1,14 @@
+import os
+from typing import TypedDict
 import faiss
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores import FAISS
 from langchain_ollama import ChatOllama
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Depends, Request
+from pydantic import BaseModel
+import jwt
+from jwt.exceptions import PyJWTError
 from .config.ollama_config import OllamaConfig
 from .rag import RagPipeline
 from .utils.download_ollama_models import DownloadOllamaModels
@@ -38,9 +43,39 @@ rag_pipeline = RagPipeline(
     llm=llm
 )
 
+class Attachment(TypedDict):
+    content_type: str
+    language: str
+    content: str
+    content_length: int
+
+class RequestBody(BaseModel):
+    assunto: str | None
+    numero_processo: str
+    data: str
+    attachment: Attachment
+    sistema: str
+    numero_documento: str
+    subassunto: str | None
+    mimetype: str
+    nucleo: str | None
+
+def verify_token(request: Request) -> bool:
+    authorization = request.headers['Authorization']
+    token = ''.join(authorization.split('Bearer '))
+    try:
+        jwt.decode(token, os.getenv('JWT_SECRET'), algorithms=[os.getenv('JWT_ALGORITHM')])
+        return True
+    except PyJWTError as e:
+        print(e)
+        return False
+
 @app.get("/")
-def generate(query: str):
-    rag_pipeline.ingest()
+def generate(body: RequestBody, query: str, authorized: bool = Depends(verify_token)):
+    if not authorized:
+        raise HTTPException(status_code=403, detail='Invalid or expired token')
+    ids = rag_pipeline.ingest(body)
     documents = rag_pipeline.retrieve(query)
     response = rag_pipeline.generate(query, documents)
+    rag_pipeline.clear_storage(ids=ids)
     return {"response": response}
