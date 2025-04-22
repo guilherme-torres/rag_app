@@ -1,10 +1,12 @@
 import os
+import uuid
 from typing import TypedDict
 import faiss
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores import FAISS
 from langchain_ollama import ChatOllama
+from langchain_mongodb.chat_message_histories import MongoDBChatMessageHistory
 from fastapi import FastAPI, HTTPException, Depends, Request
 from pydantic import BaseModel
 import jwt
@@ -36,6 +38,13 @@ llm = ChatOllama(
     model=OllamaConfig().LLM_MODEL,
     base_url=OllamaConfig().OLLAMA_HOST,
     temperature=OllamaConfig().MODEL_TEMPERATURE
+)
+
+chat_message_history = MongoDBChatMessageHistory(
+    session_id='test',
+    connection_string=f'mongodb://{os.getenv('MONGODB_USER')}:{os.getenv('MONGODB_PASSWORD')}@mongo:27017',
+    database_name="chat_db",
+    collection_name="chat_histories",
 )
 
 rag_pipeline = RagPipeline(
@@ -78,4 +87,6 @@ def generate(body: RequestBody, query: str, authorized: bool = Depends(verify_to
     documents = rag_pipeline.retrieve(query)
     response = rag_pipeline.generate(query, documents)
     rag_pipeline.clear_storage(ids=ids)
+    chat_message_history.add_user_message(query)
+    chat_message_history.add_ai_message(response)
     return {"response": response}
