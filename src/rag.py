@@ -15,7 +15,7 @@ class RagPipeline:
     
 
     def ingest(self, data) -> list[str]:
-        content = data.attachment['content']
+        content = data['attachment']['content']
         bs4_transformer = BeautifulSoupTransformer()
         text_content = bs4_transformer.extract_tags(
             html_content=content,
