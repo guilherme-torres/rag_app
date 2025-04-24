@@ -34,6 +34,9 @@ vector_store = FAISS(
     index_to_docstore_id={},
 )
 
+print(f'Using {OllamaConfig().LLM_MODEL} model')
+print(f'Using {OllamaConfig().EMBEDDING_MODEL} embedding model')
+
 llm = ChatOllama(
     model=OllamaConfig().LLM_MODEL,
     base_url=OllamaConfig().OLLAMA_HOST,

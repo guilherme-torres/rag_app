@@ -1,8 +1,8 @@
 services:
   app:
     build: .
-    # entrypoint: "fastapi run src/main.py --port 8080"
-    entrypoint: "tail -f /dev/null"
+    entrypoint: "fastapi run src/main.py --port 8080"
+    # entrypoint: "tail -f /dev/null"
     container_name: rag_app
     networks:
       - ollama-network
@@ -14,6 +14,25 @@ services:
       - ./src:/app/src
     depends_on:
       - mongo
+      - ollama
+  
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - 11434:11434
+    volumes:
+      - ./ollama_data:/root/.ollama
+    networks:
+      - ollama-network
+    # gpu support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
   
   mongo:
     image: mongo:6-jammy
@@ -43,8 +62,7 @@ services:
       - mongo
 
 networks:
+  ollama-network:
+    driver: bridge
   mongodb-network:
     driver: bridge
-  ollama-network:
-    name: ollama_ollama-network
-    external: true
