@@ -1,4 +1,3 @@
-import json
 from uuid import uuid4
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.vectorstores import VectorStore
@@ -34,20 +33,20 @@ class RagPipeline:
         return self.vector_store.similarity_search(query=query, k=1)
 
 
-    def generate(self, query: str, documents: list[Document]):
+    def generate(self, query: str, document: str) -> str:
         prompt_template = PromptTemplate.from_template('''
         ## Instrução ##
-        Você é um assistente jurídico especializado em responder perguntas com base exclusivamente nos documentos fornecidos.
+        Você é um assistente especializado em responder perguntas com base exclusivamente no documento fornecido.
         - Se a informação não estiver presente, responda apenas: **"Desculpe, esta informação não consta no documento"**
         - Não tente inferir ou supor respostas com base em conhecimento externo ou senso comum.
-        ## Documentos ##
-        {documents}
+        ## Documento ##
+        {document}
         ## Pergunta ##
         {query}
         Resposta:
         ''')
         prompt = prompt_template.invoke({
-            "documents": '\n'.join([f' - {document.page_content}' for document in documents]),
+            "document": document,
             "query": query
         })
         llm_response = self.llm.invoke(prompt)

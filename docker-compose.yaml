@@ -1,21 +1,4 @@
 services:
-  app:
-    build: .
-    entrypoint: "fastapi run src/main.py --port 8080"
-    # entrypoint: "tail -f /dev/null"
-    container_name: rag_app
-    networks:
-      - ollama-network
-      - mongodb-network
-    env_file: .env
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./src:/app/src
-    depends_on:
-      - mongo
-      - ollama
-  
   ollama:
     image: ollama/ollama
     container_name: ollama
@@ -33,36 +16,20 @@ services:
     #         - driver: nvidia
     #           count: 1
     #           capabilities: [gpu]
-  
-  mongo:
-    image: mongo:6-jammy
-    container_name: mongo
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGODB_USER}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_PASSWORD}
+  app:
+    build: .
+    entrypoint: "tail -f /dev/null"
+    container_name: rag_app
+    networks:
+      - ollama-network
+    env_file: .env
     ports:
-      - "27017:27017"
+      - "8080:8080"
     volumes:
-      - ./mongodb_data:/data/db
-    networks:
-      - mongodb-network
-
-  mongoexpress:
-    image: mongo-express
-    container_name: mongoexpress
-    ports:
-      - "8081:8081"
-    networks:
-      - mongodb-network
-    environment:
-      - ME_CONFIG_MONGODB_URL=mongodb://${MONGODB_USER}:${MONGODB_PASSWORD}@mongo:27017
-      - ME_CONFIG_BASICAUTH_USERNAME=${MONGO_EXPRESS_USER}
-      - ME_CONFIG_BASICAUTH_PASSWORD=${MONGO_EXPRESS_PASSWORD}
+      - ./src:/app/src
     depends_on:
-      - mongo
+      - ollama
 
 networks:
   ollama-network:
-    driver: bridge
-  mongodb-network:
     driver: bridge

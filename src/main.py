@@ -1,21 +1,23 @@
 import os
-from datetime import datetime
 import faiss
-import requests
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores import FAISS
 from langchain_ollama import ChatOllama
-from langchain_mongodb.chat_message_histories import MongoDBChatMessageHistory
-from fastapi import FastAPI, HTTPException, Depends, Request
-from pydantic import BaseModel
-import jwt
-from jwt.exceptions import PyJWTError
-from .config.ollama_config import OllamaConfig
-from .rag import RagPipeline
-from .utils.download_ollama_models import DownloadOllamaModels
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from src.config.ollama_config import OllamaConfig
+from src.rag import RagPipeline
+from src.utils.download_ollama_models import DownloadOllamaModels
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 DownloadOllamaModels(OllamaConfig()).execute()
 
@@ -48,64 +50,32 @@ rag_pipeline = RagPipeline(
     llm=llm
 )
 
-class RequestBody(BaseModel):
-    document_id: str
-    chat_id: str
-    query: str
-
-def verify_token(request: Request) -> bool:
-    authorization = request.headers['Authorization']
-    token = ''.join(authorization.split('Bearer '))
-    try:
-        jwt.decode(token, os.getenv('JWT_SECRET'), algorithms=[os.getenv('JWT_ALGORITHM')])
-        return token
-    except PyJWTError as e:
-        print(e)
-        return False
-    
-class CustomMongoDBChatMessageHistory(MongoDBChatMessageHistory):
-    def add_user_message(self, message: str) -> None:
-        self.collection.insert_one({
-            "session_id": self.session_id,
-            "type": "human",
-            "data": {"content": message},
-            "timestamp": datetime.now().timestamp(),
-        })
-
-    def add_ai_message(self, message: str) -> None:
-        self.collection.insert_one({
-            "session_id": self.session_id,
-            "type": "ai",
-            "data": {"content": message},
-            "timestamp": datetime.now().timestamp(),
-        })
-
-@app.post("/")
-def generate(body: RequestBody, authorized: bool = Depends(verify_token)):
-    if not authorized:
-        raise HTTPException(status_code=403, detail='Invalid or expired token')
-    
-    chat_id = body.chat_id
-    document_id = body.document_id
-    search_document_endpoint = f'{os.getenv('GRACE_BACKEND_BASE_URL')}/api/v1/documents/search/{document_id}'
-    headers = {
-        'Authorization': f'Bearer {authorized}'
+fake_document_storage = {
+    1: {
+        "id": 1,
+        "file_path": "/app/src/documents/ada_lovelace.txt"
+    },
+    2: {
+        "id": 2,
+        "file_path": "/app/src/documents/batalha_jenipapo.txt"
+    },
+    3: {
+        "id": 3,
+        "file_path": "/app/src/documents/maquina_turing.txt"
+    },
+    4: {
+        "id": 4,
+        "file_path": "/app/src/documents/teresina.txt"
     }
-    response = requests.get(search_document_endpoint, headers=headers)
-    data = response.json()
+}
 
-    chat_message_history = CustomMongoDBChatMessageHistory(
-        session_id=chat_id,
-        connection_string=f'mongodb://{os.getenv('MONGODB_USER')}:{os.getenv('MONGODB_PASSWORD')}@mongo:27017',
-        database_name="chat_db",
-        collection_name="chat_histories",
-    )
-
-    ids = rag_pipeline.ingest(data['_source'])
-    documents = rag_pipeline.retrieve(body.query)
-    ai_response = rag_pipeline.generate(body.query, documents)
-    rag_pipeline.clear_storage(ids=ids)
-    chat_message_history.add_user_message(body.query)
-    chat_message_history.add_ai_message(ai_response)
-
+@app.get("/")
+def generate(document_id: int, query: str):
+    file_path = fake_document_storage.get(document_id, {}).get("file_path")
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="document not found")
+    document_content = ""
+    with open(file_path, 'r') as document_file:
+        document_content = document_file.read()
+    ai_response = rag_pipeline.generate(query, document_content)
     return {"response": ai_response}

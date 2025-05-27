@@ -1,7 +1,4 @@
 venv
 .env
-ollama/ollama
-mongodb_data
 __pycache__
-src/document.json
 ollama_data
